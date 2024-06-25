@@ -4,6 +4,7 @@
 from typing import Optional
 import datetime
 import json
+import logging
 import os
 import sys
 import time
@@ -28,10 +29,11 @@ import openai
 from instructlab import client
 from instructlab import configuration as cfg
 from instructlab import utils
-from instructlab.server import is_temp_server_running
 
 # Local
 from ..utils import get_sysprompt, http_client
+
+logger = logging.getLogger(__name__)
 
 HELP_MD = """
 Help / TL;DR
@@ -168,7 +170,7 @@ def chat(
     """Run a chat using the modified model"""
     # pylint: disable=C0415
     # First Party
-    from instructlab.server import ensure_server
+    from instructlab.model.backends.llama import ensure_server, is_temp_server_running
 
     if endpoint_url:
         api_base = endpoint_url
@@ -177,7 +179,6 @@ def chat(
     else:
         try:
             server_process, api_base, server_queue = ensure_server(
-                ctx.obj.logger,
                 ctx.obj.config.serve,
                 tls_insecure,
                 tls_client_cert,
@@ -675,7 +676,6 @@ def chat_cli(
     max_tokens,
 ):
     """Starts a CLI-based chat with the server"""
-    logger = ctx.obj.logger
     client = OpenAI(
         base_url=api_base,
         api_key=ctx.params["api_key"],

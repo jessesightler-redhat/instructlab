@@ -93,6 +93,8 @@ config
 coreutils
 cpp
 cuBLAS
+cuda
+cuda:0
 dataset
 dev
 ditaa
@@ -106,6 +108,7 @@ ibmcloud
 ilab
 impactful
 instructlab
+init
 ip
 journald
 kaggle

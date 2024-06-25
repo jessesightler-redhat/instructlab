@@ -2,13 +2,13 @@
 
 > **WARNING** Intel Gaudi support is currently under development and not ready for production.
 >
-> **NOTE** These instructions install `llama-cpp-python` for CPU. Inference in `ilab chat`, `ilab serve`, and `ilab generate` is not using hardware acceleration.
+> **NOTE** These instructions install `llama-cpp-python` for CPU. Inference in `ilab model chat`, `ilab model serve`, and `ilab data generate` is not using hardware acceleration.
 
 ## System requirements
 
 - RHEL 9 on `x86_64` (tested with RHEL 9.3 and patched installer)
 - Intel Gaudi 2 device
-- [Habana Labs](https://docs.habana.ai/en/latest/index.html) software stack (tested with 1.15.1)
+- [Habana Labs](https://docs.habana.ai/en/latest/index.html) software stack (tested with 1.15.1, 1.16.0, 1.16.1)
 - software from Habana Vault for [RHEL](https://vault.habana.ai/ui/native/rhel) and [PyTorch](https://vault.habana.ai/ui/native/gaudi-pt-modules)
 - software [HabanaAI GitHub](https://github.com/HabanaAI/) org like [optimum-habana](https://github.com/HabanaAI/optimum-habana-fork) fork
 
@@ -177,7 +177,7 @@ export PT_ENABLE_INT64_SUPPORT=1
 Train on HPU
 
 ```shell
-ilab train --device=hpu
+ilab model train --device=hpu
 ```
 
 Output:
@@ -224,5 +224,5 @@ podman run -ti --privileged -v ./data:/opt/app-root/src:z localhost/instructlab:
 - On systems with lots of CPU cores, training sometimes crashes with a segfault right after "loading the base model". The back trace suggests a race condition in `libgomp` or oneMKL. Use the environment variable `OMP_NUM_THREADS` to reduce `OMP`'s threads, e.g. `OMP_NUM_THREADS=1`.
 - `habana-container-hook` can cause `podman build` to fail.
 - Training parameters are not optimized and verified for best results.
-- `llama-cpp` has no hardware acceleration backend for HPUs. Inference (`ilab generate` and `ilab chat`) is slow and CPU bound.
+- `llama-cpp` has no hardware acceleration backend for HPUs. Inference (`ilab data generate` and `ilab model chat`) is slow and CPU bound.
 - The container requires `--privileged`. A non-privileged container is missing `/dev/hl*` and other device files for HPUs.

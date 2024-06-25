@@ -3,6 +3,7 @@
 # Standard
 from glob import glob
 from pathlib import Path
+import logging
 import os
 import shutil
 
@@ -13,65 +14,7 @@ import torch
 # First Party
 from instructlab import utils
 
-
-class TorchDeviceParam(click.ParamType):
-    """Parse and convert device string
-
-    Returns a torch.device object:
-    - type is one of 'cpu', 'cuda', 'hpu'
-    - index is None or device index (e.g. 0 for first GPU)
-    """
-
-    name = "deviceinfo"
-    supported_devices = {"cuda", "cpu", "hpu"}
-
-    def convert(self, value, param, ctx) -> "torch.device":
-        # pylint: disable=C0415
-        # Function local import, import torch can take more than a second
-        # Third Party
-        import torch
-
-        if not isinstance(value, torch.device):
-            try:
-                device = torch.device(value)
-            except RuntimeError as e:
-                self.fail(str(e), param, ctx)
-
-        if device.type not in self.supported_devices:
-            supported = ", ".join(repr(s) for s in sorted(self.supported_devices))
-            self.fail(
-                f"Unsupported device type '{device.type}'. Only devices "
-                f"types {supported}, and indexed device strings like 'cuda:0' "
-                "are supported for now.",
-                param,
-                ctx,
-            )
-
-        # Detect CUDA/ROCm device
-        if device.type == "cuda":
-            if not torch.cuda.is_available():
-                self.fail(
-                    f"{value}: Torch has no CUDA/ROCm support or could not detect "
-                    "a compatible device.",
-                    param,
-                    ctx,
-                )
-            # map unqualified 'cuda' to current device
-            if device.index is None:
-                device = torch.device(device.type, torch.cuda.current_device())
-
-        if device.type == "hpu":
-            click.secho(
-                "WARNING: HPU support is experimental, unstable, and not "
-                "optimized, yet.",
-                fg="red",
-                bold=True,
-            )
-
-        return device
-
-
-TORCH_DEVICE = TorchDeviceParam()
+logger = logging.getLogger(__name__)
 
 
 @click.command()
@@ -125,12 +68,12 @@ TORCH_DEVICE = TorchDeviceParam()
 )
 @click.option(
     "--device",
-    type=TORCH_DEVICE,
+    type=click.Choice(["cpu", "cuda", "hpu"]),
     show_default=True,
     default="cpu",
     help=(
-        "PyTorch device for Linux training (default: 'cpu'). Use 'cuda' "
-        "for NVidia CUDA / AMD ROCm GPU, 'cuda:0' for first GPU."
+        "PyTorch device for Linux training. Use 'cuda' "
+        "for NVidia CUDA / AMD ROCm GPU, to use specific GPU, set visible GPU before run train command."
     ),
 )
 @click.option(
@@ -167,7 +110,7 @@ def train(
     local,
     skip_quantize,
     num_epochs,
-    device: "torch.device",
+    device: str,
     four_bit_quant: bool,
     model_name: str,
 ):
@@ -178,9 +121,6 @@ def train(
     if not input_dir:
         # By default, generate output-dir is used as train input-dir
         input_dir = ctx.obj.config.generate.output_dir
-
-    if four_bit_quant and device.type != "cuda":
-        ctx.fail("--4-bit-quant option requires --device=cuda")
 
     effective_data_dir = Path(data_dir or "./taxonomy_data")
     train_file = effective_data_dir / "train_gen.jsonl"
@@ -205,9 +145,11 @@ def train(
             )
             raise click.exceptions.Exit(1)
 
-        # generated input files reverse sorted by name (contains timestamp)
+        # generated input files reverse sorted by modification time
         def get_files(pattern):
-            return sorted(Path(input_dir).glob(pattern), reverse=True)
+            return sorted(
+                Path(input_dir).glob(pattern), key=os.path.getmtime, reverse=True
+            )
 
         train_files = get_files("train_*")
         test_files = get_files("test_*")
@@ -223,7 +165,9 @@ def train(
                 "Found multiple files from `ilab generate`. Using the most recent generation.",
                 fg="yellow",
             )
-        # First file is latest (by above reverse sort and timestamped names)
+        # The first file is latest
+        logger.debug("train_file=%s", train_files[0])
+        logger.debug("test_file=%s", test_files[0])
         shutil.copy(train_files[0], train_file)
         shutil.copy(test_files[0], test_file)
 
@@ -239,12 +183,14 @@ def train(
             test_file=test_file,
             model_name=model_name,
             num_epochs=num_epochs,
-            device=device,
+            train_device=device,
             four_bit_quant=four_bit_quant,
         )
 
         final_results_dir = training_results_dir / "final"
-        final_results_dir.mkdir(exist_ok=True)
+        if final_results_dir.exists():
+            shutil.rmtree(final_results_dir)
+        final_results_dir.mkdir()
 
         gguf_models_dir = Path("./models")
         gguf_models_dir.mkdir(exist_ok=True)

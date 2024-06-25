@@ -12,7 +12,8 @@ import yaml
 # First Party
 from instructlab import configuration as config
 from instructlab import utils
-from instructlab.data import generator
+
+logger = logging.getLogger(__name__)
 
 
 @click.command()
@@ -51,10 +52,6 @@ def diff(ctx, taxonomy_path, taxonomy_base, yaml_rules, quiet):
         taxonomy_base = ctx.obj.config.generate.taxonomy_base
     if not taxonomy_path:
         taxonomy_path = ctx.obj.config.generate.taxonomy_path
-    if not ctx.obj:
-        logger = logging.getLogger(__name__)
-    else:
-        logger = ctx.obj.logger
 
     if not quiet:
         is_file = os.path.isfile(taxonomy_path)
@@ -72,7 +69,7 @@ def diff(ctx, taxonomy_path, taxonomy_base, yaml_rules, quiet):
             for f in updated_taxonomy_files:
                 click.echo(f)
     try:
-        read_taxonomy(logger, taxonomy_path, taxonomy_base, yaml_rules)
+        read_taxonomy(None, taxonomy_path, taxonomy_base, yaml_rules)
     except (SystemExit, yaml.YAMLError) as exc:
         if not quiet:
             click.secho(
