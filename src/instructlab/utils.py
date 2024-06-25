@@ -25,6 +25,7 @@ import yaml
 
 # Local
 from . import common
+from instructlab.data import pdf_parse_nougat
 
 logger = logging.getLogger(__name__)
 
@@ -215,9 +216,13 @@ def get_documents(
             logger.debug("Processing files...")
             for pattern in file_patterns:
                 for file_path in glob.glob(os.path.join(repo.working_dir, pattern)):
-                    if os.path.isfile(file_path) and file_path.endswith(".md"):
-                        with open(file_path, "r", encoding="utf-8") as file:
-                            file_contents.append(file.read())
+                    if os.path.isfile(file_path):
+                        if file_path.endswith(".md"):
+                            with open(file_path, "r", encoding="utf-8") as file:
+                                file_contents.append(file.read())
+                        elif file_path.endswith(".pdf"):
+                            file_contents.append(pdf_parse_nougat.pdf_to_markdown(file_path))
+                            print("File contents yay!!!",file_contents)
 
             if file_contents:
                 return file_contents
