@@ -20,7 +20,7 @@ def load_model():
     global model
     if model == None:
         checkpoint = get_checkpoint(None, model_tag="0.1.0-small")
-        print("Loading checkpoint:", checkpoint)
+        print("Loading nougat checkpoint:", checkpoint)
         model = NougatModel.from_pretrained(checkpoint)
         model.eval()
 

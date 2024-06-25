@@ -222,7 +222,6 @@ def get_documents(
                                 file_contents.append(file.read())
                         elif file_path.endswith(".pdf"):
                             file_contents.append(pdf_parse_nougat.pdf_to_markdown(file_path))
-                            print("File contents yay!!!",file_contents)
 
             if file_contents:
                 return file_contents
